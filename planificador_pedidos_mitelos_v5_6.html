@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planificación de pedidos - Mitelos v5.2</title>
+<style>
+:root{
+  --orange:#f5a623;--orange2:#ffb12b;--gray:#d9d9d9;--border:#222;
+  --bg:#f4f5f7;--white:#fff;--danger:#c62828;--green:#2e7d32;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:#222}
+header{background:#fff;padding:16px 24px;border-bottom:1px solid #ccc;display:flex;justify-content:space-between;align-items:center;gap:15px;position:sticky;top:0;z-index:5}
+h1{font-size:22px;margin:0}.subtitle{color:#666;font-size:13px;margin-top:4px}
+button{border:0;border-radius:5px;padding:9px 14px;cursor:pointer;font-weight:600}
+button:disabled{opacity:.45;cursor:not-allowed}.primary{background:var(--orange2);color:#111}.secondary{background:#e9ecef}.danger{background:#f5d2d2;color:var(--danger)}
+.container{padding:18px 24px}.panel{background:#fff;border:1px solid #ccc;border-radius:8px;padding:15px;margin-bottom:16px}.panel-title{font-weight:700;margin-bottom:12px}
+.filters{display:flex;flex-wrap:wrap;gap:9px}select,input{height:36px;border:1px solid #aaa;border-radius:4px;padding:6px 9px;background:#fff}.filters select,.filters input{min-width:145px}
+.window-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid #ccc;border-radius:8px;padding:11px 13px;margin-bottom:14px}.window-controls{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.window-label{font-weight:700;min-width:260px;text-align:center}.window-help{font-size:12px;color:#666}
+.summary{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}.card{background:#fff;border:1px solid #ccc;border-radius:6px;padding:10px 15px;min-width:150px}.card strong{display:block;font-size:18px}.card span{font-size:12px;color:#666}
+.table-wrap{overflow:auto;background:#fff;border:1px solid var(--border);border-radius:5px}
+table{border-collapse:collapse;width:100%;min-width:1450px;font-size:13px}th,td{border:1px solid var(--border);padding:7px 7px;text-align:center;vertical-align:middle}th{background:var(--orange2);font-weight:600;position:static}
+.left{text-align:left}.qty{text-align:right;white-space:nowrap}.qty b{font-weight:700}.muted{color:#888;font-style:italic}.actions button{padding:5px 8px;margin:1px;font-size:11px}
+.badge{padding:3px 7px;border-radius:10px;font-size:11px;font-weight:bold;white-space:nowrap}.mdr{background:#e3edf8}.mdd{background:#e7f3e5}.firm{background:#d9ead3}.forecast{background:#eee;color:#666}
+/* Separadores de lectura: banda limpia por mes + encabezado explícito al cambiar de año */
+tr.month-separator td{
+  padding:0;
+  height:9px;
+  line-height:9px;
+  border-left:0;
+  border-right:0;
+  border-bottom:0;
+  border-top:3px solid #777;
+  background:#f0f1f3;
+}
+tr.year-header td{
+  padding:8px 10px;
+  border:1px solid #333;
+  background:#e5e7eb;
+  font-size:15px;
+  font-weight:700;
+  text-align:left;
+  letter-spacing:.3px;
+}
+.month-cell{font-weight:700;white-space:nowrap}
+body.factory-derex .table-wrap th{background:#f6d58a}
+body.factory-derex tr.month-separator td{border-top-color:#b88916;background:#fff8e7}
+body.factory-derex tr.year-header td{background:#f6d58a;border-color:#b88916}
+body.factory-entema .table-wrap th{background:#b9d7f5}
+body.factory-entema tr.month-separator td{border-top-color:#4f88bb;background:#eef6fd}
+body.factory-entema tr.year-header td{background:#b9d7f5;border-color:#4f88bb}
+body.factory-neftis .table-wrap th{background:#d8c2eb}
+body.factory-neftis tr.month-separator td{border-top-color:#8760a8;background:#f6f0fa}
+body.factory-neftis tr.year-header td{background:#d8c2eb;border-color:#8760a8}
+.empty{padding:20px;color:#777;text-align:center}.no-window{padding:20px;color:#777;text-align:center}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);align-items:center;justify-content:center;z-index:20}.modal.open{display:flex}.modal-box{background:#fff;width:min(850px,94vw);max-height:92vh;overflow:auto;border-radius:8px;padding:20px}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.modal-head h2{margin:0;font-size:19px}.form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}.field label{display:block;font-size:12px;font-weight:bold;margin-bottom:4px}.field input,.field select{width:100%}.full{grid-column:1/-1}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.note{font-size:12px;color:#666;margin-top:8px}
+/* Acceso */
+.locked-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.mode-badge{font-size:12px;padding:6px 9px;border-radius:12px;font-weight:bold;background:#eee;color:#555}.mode-badge.edit{background:#d9ead3;color:#245b2a}.login-box{width:min(420px,92vw)}.login-info{font-size:13px;color:#666;line-height:1.45;margin-bottom:14px}.login-error{display:none;color:#b71c1c;font-size:12px;margin-top:8px}.login-error.show{display:block}.security-note{font-size:11px;color:#888;margin-top:10px}
+@media(max-width:800px){.form-grid{grid-template-columns:1fr 1fr}.container{padding:12px}.filters select,.filters input{min-width:120px}.window-label{min-width:0;text-align:left}}
+@media print{header,.panel,.window-bar,.summary,.note,.actions{display:none!important}.container{padding:0}.table-wrap{border:0;overflow:visible}table{min-width:0;width:100%;font-size:9px}th{position:static}.month-cell{font-weight:700}tr.month-separator td{height:7px;padding:0;border-top-width:3px}tr.year-header td{padding:6px 8px;font-size:12px;font-weight:700}}
+
+.cloud-status{font-size:12px;padding:6px 9px;border-radius:12px;background:#eee;color:#666;white-space:nowrap}
+.cloud-status.online{background:#d9ead3;color:#245b2a}
+.cloud-status.warning{background:#f8e0d0;color:#8a3d12}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Planificación de pedidos</h1>
+    <div class="subtitle">12 meses móviles · Producción y entregas</div>
+  </div>
+  <div class="locked-actions">
+    <span id="modeBadge" class="mode-badge">Solo lectura</span><span id="cloudStatus" class="cloud-status">Conectando…</span>
+    <button class="secondary" id="loginBtn" onclick="openLogin()">🔐 Entrar para editar</button>
+    <button class="secondary" id="logoutBtn" onclick="logout()" style="display:none">Salir de edición</button>
+    <button class="secondary" id="configBtn" onclick="openConfig()">⚙ Configuración</button>
+    <button class="primary" id="newOrderBtn" onclick="openModal()" disabled>＋ Nuevo pedido</button>
+  </div>
+</header>
+<div id="setupNotice" class="panel" style="display:none;margin:12px 24px 0">
+  <div class="panel-title">⚠ Configuración necesaria</div>
+  <div style="font-size:13px;color:#555;line-height:1.5">
+    Configura la conexión con Supabase desde el botón <b>⚙ Configuración</b>. La URL y la clave publicable se guardan en este navegador.
+  </div>
+</div>
+
+
+<div class="container">
+  <div class="panel">
+    <div class="panel-title">Filtros <span style="font-size:11px;font-weight:normal;color:#777">· El estado FIRME/PREDICCIÓN es solo interno y no se incluye en las descargas para fábrica.</span></div>
+    <div class="filters">
+      <select id="filterYear" onchange="render()"><option value="">Todos los años</option></select>
+      <select id="filterMonth" onchange="render()"><option value="">Todos los meses</option></select>
+      <select id="filterProduct" onchange="render()"><option value="">Todos los productos</option></select>
+      <select id="filterFactory" onchange="render()"><option value="">Todas las fábricas</option></select>
+      <select id="filterDistributor" onchange="render()"><option value="">Todos los distribuidores</option></select>
+      <select id="filterCountry" onchange="render()"><option value="">Todos los países</option></select>
+      <select id="filterValve" onchange="render()"><option value="">Todas las válvulas</option></select>
+      <select id="filterReg" onchange="render()"><option value="">MDD + MDR</option><option>MDR</option><option>MDD</option></select>
+      <select id="filterStatus" onchange="render()"><option value="">Firme + Predicción</option><option value="Firme">Orden en firme</option><option value="Predicción">Predicción</option></select>
+      <input id="filterText" oninput="render()" placeholder="Buscar pedido / SAP / código...">
+      <button class="secondary" onclick="exportFactory()">Descargar fábrica</button>
+      <button class="secondary" onclick="printFactory()">Imprimir / PDF</button>
+      <button class="secondary" onclick="clearFilters()">Limpiar filtros</button>
+      <button class="secondary" onclick="manualCloudRefresh()">Actualizar</button>
+    </div>
+  </div>
+
+  <div class="window-bar">
+    <div class="window-controls">
+      <button class="secondary" onclick="moveWindow(-1)">‹ Mes anterior</button>
+      <button class="secondary" onclick="resetWindow()">Volver al mes actual</button>
+      <button class="secondary" onclick="moveWindow(1)">Mes siguiente ›</button>
+    </div>
+    <div id="windowLabel" class="window-label"></div>
+    <div class="window-help">La ventana de 12 meses se mueve manualmente para no perder meses con pedidos pendientes.</div>
+  </div>
+
+  <div class="summary" id="summary"></div>
+
+  <div class="table-wrap">
+    <table id="planningTable">
+      <thead><tr>
+        <th>Mes</th><th>Unidades</th><th>Nº Pedido</th><th>SAP</th><th>Código Mitelos</th><th>Producto</th><th>País</th><th>Distribuidor</th><th>Proveedor válvula</th><th>Semana de entrega</th><th>MDD/MDR</th><th>Estado</th><th>Comentarios</th><th>Acciones</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+  <div class="note">Los datos se guardan en la base central de Supabase. La vista muestra 12 meses a partir de la ventana seleccionada. Puedes moverla manualmente con los controles superiores. El estado interno no se incluye en los documentos para fábrica.</div>
+</div>
+
+<!-- Supabase configuration -->
+<div class="modal" id="configModal">
+  <div class="modal-box login-box">
+    <div class="modal-head"><h2>Configuración Supabase</h2><button class="secondary" onclick="closeConfig()">✕</button></div>
+    <div class="login-info">Introduce los datos de tu proyecto. La <b>publishable/anon key</b> se puede utilizar en una aplicación web; <b>nunca</b> introduzcas aquí la service_role key.</div>
+    <form onsubmit="saveConfig(event)">
+      <div class="field"><label>Supabase Project URL</label><input id="cfgUrl" placeholder="https://xxxxxxxx.supabase.co" required></div>
+      <div class="field" style="margin-top:11px"><label>Publishable key / anon key</label><input id="cfgKey" placeholder="eyJ..." required></div>
+      <div class="field" style="margin-top:11px"><label>Email del usuario administrador</label><input id="cfgAdminEmail" type="email" placeholder="tu-email@empresa.com" required></div>
+      <div id="configError" class="login-error"></div>
+      <div class="modal-actions"><button type="button" class="secondary" onclick="closeConfig()">Cancelar</button><button type="submit" class="primary">Guardar conexión</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- Login -->
+<div class="modal" id="loginModal">
+  <div class="modal-box login-box">
+    <div class="modal-head"><h2>Acceso de edición</h2><button class="secondary" onclick="closeLogin()">✕</button></div>
+    <div class="login-info">La planificación se puede consultar en modo <b>solo lectura</b>. Para crear, editar o borrar pedidos debes iniciar sesión.</div>
+    <form onsubmit="login(event)">
+      <div class="field"><label>Usuario</label><input id="loginUser" autocomplete="username" required></div>
+      <div class="field" style="margin-top:11px"><label>Contraseña</label><input id="loginPass" type="password" autocomplete="current-password" required></div>
+      <div id="loginError" class="login-error">Usuario o contraseña incorrectos.</div>
+      <div class="modal-actions"><button type="button" class="secondary" onclick="closeLogin()">Cancelar</button><button type="submit" class="primary">Entrar</button></div>
+      <div class="security-note">Importante: esta versión HTML es adecuada para controlar la edición de forma práctica, pero no sustituye una autenticación real de servidor. Si el enlace se publica como página estática, un usuario técnico podría inspeccionar el código.</div>
+    </form>
+  </div>
+</div>
+
+<!-- Order modal -->
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <div class="modal-head"><h2 id="modalTitle">Nuevo pedido</h2><button class="secondary" onclick="closeModal()">✕</button></div>
+    <form id="orderForm" onsubmit="saveOrder(event)">
+      <input type="hidden" id="editId">
+      <div class="form-grid">
+        <div class="field"><label>Producto *</label><select id="product" required></select></div>
+        <div class="field"><label>Fábrica *</label><select id="factory" required></select></div>
+        <div class="field"><label>Fecha / mes de entrega *</label><input type="date" id="deliveryDate" required></div>
+        <div class="field"><label>Unidades *</label><input type="number" id="units" min="1" step="1" required></div>
+        <div class="field"><label>Nº Pedido</label><input id="orderNo" placeholder="PE-..."></div>
+        <div class="field"><label>SAP fabricante</label><input id="sap" placeholder="4000...."></div>
+        <div class="field"><label>Código Mitelos</label><input id="mitelosCode" placeholder="MIT-202-..."></div>
+        <div class="field"><label>País</label><input id="country" placeholder="España"></div>
+        <div class="field"><label>Distribuidor</label><input id="distributor" placeholder="Faes Farma"></div>
+        <div class="field"><label>Proveedor de válvula</label><select id="valve"><option value="">Seleccionar</option><option>Silgan</option><option>Bona</option><option>Otro</option></select></div>
+        <div class="field"><label>Semana de entrega</label><input type="number" id="week" min="1" max="53" placeholder="39"></div>
+        <div class="field"><label>MDD / MDR *</label><select id="regulatory" required><option>MDR</option><option>MDD</option></select></div>
+        <div class="field"><label>Estado del pedido *</label><select id="status" required><option value="Firme">Orden en firme</option><option value="Predicción">Predicción</option></select></div>
+        <div class="field full"><label>Comentarios</label><input id="comments" placeholder="Pendiente enviar pruebas de impresión aprobadas..."></div>
+      </div>
+      <div class="modal-actions"><button type="button" class="secondary" onclick="closeModal()">Cancelar</button><button type="submit" class="primary">Guardar pedido</button></div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/*
+  V5 - Datos centralizados con Supabase.
+  IMPORTANTE: sustituye SUPABASE_URL y SUPABASE_ANON_KEY por los datos de tu proyecto.
+  La anon key NO es una contraseña; la seguridad real se consigue con RLS en Supabase.
+*/
+const ADMIN_USERNAME="admin";
+const PRODUCTS=["Otiblock Spray 45mL","Otiblock Gotas","Otidry-MD","Otikeen"];
+const FACTORIES=["Derex","Entema","Neftis"];
+const VALVES=["Silgan","Bona","Otro"];
+
+const seed=[
+{id:1,date:"2026-09-25",units:50000,orderNo:"PE-260415-1M-OT",sap:"40001862",code:"MIT-202-SE1",product:"Otiblock Spray 45mL",country:"Suecia",distributor:"Addeira",factory:"Derex",valve:"Silgan",week:39,reg:"MDR",comments:""},
+{id:2,date:"2026-09-25",units:12500,orderNo:"PE-260721-1-OT",sap:"40002437",code:"MIT-202-SE1",product:"Otiblock Spray 45mL",country:"Suecia",distributor:"Addeira",factory:"Derex",valve:"Bona",week:39,reg:"MDR",comments:""},
+{id:3,date:"2026-10-16",units:37500,orderNo:"PE-260528-1M-OT",sap:"40002167",code:"MIT-202-ZA1",product:"Otiblock Spray 45mL",country:"Sudáfrica",distributor:"Abex",factory:"Derex",valve:"Bona",week:42,reg:"MDR",comments:""},
+{id:4,date:"2026-11-06",units:25000,orderNo:"PE-260612-1-OT",sap:"40002400",code:"MIT-202-SE2",product:"Otiblock Spray 45mL",country:"Finlandia",distributor:"Addeira",factory:"Derex",valve:"Bona",week:45,reg:"MDR",comments:"Pendiente enviar pruebas de impresión aprobadas por parte de Mitelos."},
+{id:5,date:"2026-11-06",units:100000,orderNo:"PE-260727-1-OT",sap:"40002401",code:"MIT-202-ES1",product:"Otiblock Spray 45mL",country:"España",distributor:"Faes Farma",factory:"Entema",valve:"Bona",week:45,reg:"MDR",comments:""},
+{id:6,date:"2026-12-04",units:12500,orderNo:"",sap:"40002127",code:"MIT-202-CL1",product:"Otiblock Spray 45mL",country:"Chile",distributor:"FQP",factory:"Derex",valve:"Bona",week:"",reg:"MDD",comments:""},
+{id:7,date:"2026-12-04",units:37500,orderNo:"",sap:"40002128",code:"MIT-202-UK2",product:"Otiblock Spray 45mL",country:"Reino Unido",distributor:"Em Pharma",factory:"Entema",valve:"Bona",week:"",reg:"MDD",comments:""},
+{id:8,date:"2026-12-18",units:25000,orderNo:"",sap:"",code:"MIT-202-PH1",product:"Otiblock Spray 45mL",country:"Filipinas",distributor:"Pharma Nutria",factory:"Neftis",valve:"Bona",week:"",reg:"MDR",comments:"Pendiente SAP nuevo cliente"},
+{id:9,date:"2027-01-15",units:100000,orderNo:"",sap:"40002401",code:"MIT-202-ES1",product:"Otiblock Spray 45mL",country:"España",distributor:"Faes Farma",factory:"Entema",valve:"Bona",week:"",reg:"MDR",comments:""},
+{id:10,date:"2027-03-19",units:37500,orderNo:"",sap:"40002167",code:"MIT-202-ZA1",product:"Otiblock Spray 45mL",country:"Sudáfrica",distributor:"Abex",factory:"Derex",valve:"Bona",week:"",reg:"MDR",comments:""},
+{id:11,date:"2027-04-02",units:100000,orderNo:"",sap:"40002401",code:"MIT-202-ES1",product:"Otiblock Spray 45mL",country:"España",distributor:"Faes Farma",factory:"Entema",valve:"Bona",week:"",reg:"MDR",comments:""},
+{id:12,date:"2027-04-16",units:32526,orderNo:"",sap:"40002401",code:"MIT-202-ES1",product:"Otiblock Spray 45mL",country:"España",distributor:"Faes Farma",factory:"Entema",valve:"Bona",week:"",reg:"MDR",comments:""},
+{id:13,date:"2027-04-16",units:62500,orderNo:"",sap:"40002437",code:"MIT-202-SE1",product:"Otiblock Spray 45mL",country:"Suecia",distributor:"Addeira",factory:"Derex",valve:"Bona",week:"",reg:"MDR",comments:""},
+{id:14,date:"2027-05-14",units:6000,orderNo:"",sap:"40002156",code:"MIT-202-SG1",product:"Otiblock Spray 45mL",country:"Singapur",distributor:"Zyfas",factory:"Neftis",valve:"Bona",week:"",reg:"MDD",comments:""},
+{id:15,date:"2027-05-14",units:12500,orderNo:"",sap:"40002127",code:"MIT-202-CL1",product:"Otiblock Spray 45mL",country:"Chile",distributor:"FQP",factory:"Derex",valve:"Bona",week:"",reg:"MDD",comments:""}
+];
+
+
+let orders=[];
+let nextId=1;
+let editMode=false;
+function isEditMode(){ return !!editMode; }
+let currentUser=null;
+let supabaseClient=null;
+let realtimeChannel=null;
+let cloudReady=false;
+let cloudError="";
+
+function localOrders(){
+  try{
+    const raw=JSON.parse(localStorage.getItem("mitelosOrders")||"null");
+    return Array.isArray(raw)?raw:[];
+  }catch(e){return []}
+}
+function normalizeOrders(list){
+  return (list||[]).map(o=>({
+    id:o.id,
+    date:o.date||"",
+    units:Number(o.units||0),
+    orderNo:o.orderNo||"",
+    sap:o.sap||"",
+    code:o.code||"",
+    product:o.product||"",
+    country:o.country||"",
+    distributor:o.distributor||"",
+    factory:o.factory||"Derex",
+    valve:o.valve||"",
+    week:o.week??"",
+    reg:o.reg||"MDR",
+    status:o.status||(((o.orderNo||"").trim())?"Firme":"Predicción"),
+    comments:o.comments||""
+  }));
+}
+
+function getCloudConfig(){
+  try{return JSON.parse(localStorage.getItem("mitelosSupabaseConfig")||"{}")||{}}catch(e){return {}}
+}
+function cloudValues(){
+  const c=getCloudConfig();
+  return {url:String(c.url||"").trim().replace(/\/$/,""),key:String(c.key||"").trim(),adminEmail:String(c.adminEmail||"").trim()};
+}
+function cloudConfigured(){
+  const c=cloudValues();
+  return /^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(c.url) && c.key.length>20;
+}
+
+async function initCloud(){
+  if(!cloudConfigured()){
+    cloudReady=false;
+    cloudError="La conexión central todavía no está configurada.";
+    orders=normalizeOrders(localOrders().length?localOrders():seed);
+    nextId=Math.max(0,...orders.map(o=>Number(o.id)||0))+1;
+    updateCloudStatus();
+    return false;
+  }
+  try{
+    if(!window.supabase || !window.supabase.createClient) throw new Error("No se ha podido cargar la librería de Supabase. Comprueba la conexión a Internet.");
+    const cfg=cloudValues();
+    if(!cfg.url || !cfg.key) throw new Error("Falta la Project URL o la Publishable key.");
+
+    // Primero comprobamos la API REST directamente. Esto evita que la pantalla quede
+    // esperando indefinidamente por una inicialización del cliente JS.
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),8000);
+    let response;
+    try{
+      response=await fetch(cfg.url+"/rest/v1/orders?select=*&order=delivery_date.asc,created_at.asc",{
+        method:"GET",
+        headers:{"apikey":cfg.key,"Authorization":"Bearer "+cfg.key,"Accept":"application/json"},
+        signal:controller.signal,
+        cache:"no-store"
+      });
+    }finally{clearTimeout(timer)}
+    const raw=await response.text();
+    if(!response.ok) throw new Error("Supabase respondió "+response.status+": "+raw.slice(0,300));
+    let data=[];
+    try{data=raw?JSON.parse(raw):[]}catch(_){throw new Error("Supabase devolvió una respuesta que no se pudo interpretar.")}
+
+    // Una vez verificada la conexión, creamos el cliente para Auth y Realtime.
+    supabaseClient=window.supabase.createClient(cfg.url,cfg.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
+    orders=normalizeOrders((data||[]).map(row=>({
+      id:row.id,date:String(row.delivery_date||"").slice(0,10),units:row.units,orderNo:row.order_no,sap:row.sap,
+      code:row.mitelos_code,product:row.product,country:row.country,distributor:row.distributor,
+      factory:row.factory,valve:row.valve,week:row.delivery_week,reg:row.regulatory,
+      status:row.status,comments:row.comments
+    })));
+    cloudReady=true;
+    cloudError="";
+    populateFilters(true);
+    subscribeRealtime();
+    nextId=Math.max(0,...orders.map(o=>Number(o.id)||0))+1;
+    render();
+    updateCloudStatus();
+    return true;
+  }catch(e){
+    cloudReady=false;
+    cloudError=e.name==="AbortError"?"Tiempo de espera agotado al conectar con Supabase.":(e.message||String(e));
+    orders=normalizeOrders(localOrders().length?localOrders():seed);
+    nextId=Math.max(0,...orders.map(o=>Number(o.id)||0))+1;
+    updateCloudStatus();
+    render();
+    return false;
+  }
+}
+
+async function getSession(){
+  if(!supabaseClient)return null;
+  const {data}=await supabaseClient.auth.getSession();
+  currentUser=data.session?.user||null;
+  return currentUser;
+}
+
+async function refreshCloud(){
+  if(!supabaseClient)return;
+  const {data,error}=await supabaseClient.from("orders").select("*").order("delivery_date",{ascending:true}).order("created_at",{ascending:true});
+  if(error){cloudError=error.message;updateCloudStatus();return}
+  console.log("Mit﻿elos V5.1 - pedidos recibidos desde Supabase:", data?.length||0, data);
+  orders=normalizeOrders((data||[]).map(row=>({
+    id:row.id,date:String(row.delivery_date||"").slice(0,10),units:row.units,orderNo:row.order_no,sap:row.sap,
+    code:row.mitelos_code,product:row.product,country:row.country,distributor:row.distributor,
+    factory:row.factory,valve:row.valve,week:row.delivery_week,reg:row.regulatory,
+    status:row.status,comments:row.comments
+  })));
+  nextId=Math.max(0,...orders.map(o=>Number(o.id)||0))+1;
+  cloudReady=true;cloudError="";populateFilters(true);render();updateCloudStatus();
+}
+
+function subscribeRealtime(){
+  if(!supabaseClient)return;
+  if(realtimeChannel)supabaseClient.removeChannel(realtimeChannel);
+  realtimeChannel=supabaseClient.channel("mitelos-orders")
+    .on("postgres_changes",{event:"*",schema:"public",table:"orders"},()=>refreshCloud())
+    .subscribe();
+}
+
+async function importLocalToCloud(){
+  if(!supabaseClient||!currentUser){openLogin();return}
+  const local=normalizeOrders(localOrders().length?localOrders():seed);
+  if(!local.length)return;
+  const rows=local.map(o=>({
+    delivery_date:o.date,units:o.units,order_no:o.orderNo,sap:o.sap,mitelos_code:o.code,
+    product:o.product,country:o.country,distributor:o.distributor,factory:o.factory,
+    valve:o.valve,delivery_week:o.week===""?null:Number(o.week),regulatory:o.reg,
+    status:o.status,comments:o.comments,created_by:currentUser.id
+  }));
+  const {error}=await supabaseClient.from("orders").insert(rows);
+  if(error){alert("No se pudieron importar los pedidos: "+error.message);return}
+  await refreshCloud();
+  localStorage.removeItem("mitelosOrders");
+  alert("Pedidos importados correctamente a la base central.");
+}
+
+function isCloudMode(){return cloudReady&&!!supabaseClient}
+
+async function saveOrderCloud(edited,id){
+  if(!supabaseClient||!currentUser){openLogin();return false}
+  const row={
+    delivery_date:edited.date,units:edited.units,order_no:edited.orderNo,sap:edited.sap,mitelos_code:edited.code,
+    product:edited.product,country:edited.country,distributor:edited.distributor,factory:edited.factory,
+    valve:edited.valve,delivery_week:edited.week===""?null:Number(edited.week),regulatory:edited.reg,
+    status:edited.status,comments:edited.comments,updated_at:new Date().toISOString()
+  };
+  let result;
+  if(id){
+    result=await supabaseClient.from("orders").update(row).eq("id",id).select().single();
+  }else{
+    row.created_by=currentUser.id;
+    result=await supabaseClient.from("orders").insert(row).select().single();
+  }
+  if(result.error){alert("No se pudo guardar el pedido: "+result.error.message);return false}
+  await refreshCloud();
+  return true;
+}
+
+async function deleteOrderCloud(id){
+  if(!supabaseClient||!currentUser){openLogin();return false}
+  const {error}=await supabaseClient.from("orders").delete().eq("id",id);
+  if(error){alert("No se pudo borrar el pedido: "+error.message);return false}
+  await refreshCloud();
+  return true;
+}
+
+async function manualCloudRefresh(){
+  if(!cloudConfigured()){openConfig();return}
+  if(!supabaseClient){await initCloud();return}
+  await refreshCloud();
+  render();
+}
+
+function saveData(){
+  // Compatibilidad local: la fuente oficial en V5 es la base central.
+  if(!isCloudMode()) localStorage.setItem("mitelosOrders",JSON.stringify(orders));
+}
+
+function updateCloudStatus(){
+  const el=document.getElementById("cloudStatus");
+  if(!el)return;
+  if(!cloudConfigured()){
+    el.textContent="⚠ Base central no configurada";
+    el.className="cloud-status warning";
+  }else if(cloudError){
+    el.textContent="⚠ Sin conexión central";
+    el.className="cloud-status warning";
+  }else if(cloudReady){
+    el.textContent="● Datos compartidos y sincronizados";
+    el.className="cloud-status online";
+  }else{
+    el.textContent="Conectando…";
+    el.className="cloud-status";
+  }
+}
+
+function monthStart(d){return new Date(d.getFullYear(),d.getMonth(),1)}
+function addMonths(d,n){return new Date(d.getFullYear(),d.getMonth()+n,1)}
+function monthKey(date){const d=new Date(date+"T00:00:00");return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`}
+function monthName(key){const [y,m]=key.split("-").map(Number);return new Intl.DateTimeFormat("es-ES",{month:"long"}).format(new Date(y,m-1,1))}
+function monthLabel(key){const n=monthName(key);return n.charAt(0).toUpperCase()+n.slice(1)}
+function fmt(n){return Number(n||0).toLocaleString("es-ES")}
+function initialWindow(){const d=monthStart(new Date());return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`}
+let windowStart=localStorage.getItem("mitelosWindowStart")||initialWindow();
+function current12(){const [y,m]=windowStart.split("-").map(Number),start=new Date(y,m-1,1),arr=[];for(let i=0;i<12;i++){const d=addMonths(start,i);arr.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`)}return arr}
+function updateWindowLabel(){const m=current12();document.getElementById("windowLabel").textContent=`${monthLabel(m[0])} ${m[0].slice(0,4)} → ${monthLabel(m[11])} ${m[11].slice(0,4)}`;}
+function moveWindow(delta){const [y,m]=windowStart.split("-").map(Number),d=addMonths(new Date(y,m-1,1),delta);windowStart=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;localStorage.setItem("mitelosWindowStart",windowStart);const mf=document.getElementById("filterMonth");if(mf.value&&!current12().includes(mf.value))mf.value="";populateFilters(true);render()}
+function resetWindow(){windowStart=initialWindow();localStorage.setItem("mitelosWindowStart",windowStart);const mf=document.getElementById("filterMonth");if(mf.value&&!current12().includes(mf.value))mf.value="";populateFilters(true);render()}
+
+function selected(id){return document.getElementById(id)?.value||""}
+function setOptions(id,items,first,keep=true){const el=document.getElementById(id),old=el.value;el.innerHTML=`<option value="">${first}</option>`+items.map(x=>`<option value="${escapeHtml(x.value??x)}">${escapeHtml(x.label??x)}</option>`).join("");if(keep&&[...el.options].some(o=>o.value===old))el.value=old}
+function escapeHtml(v){return String(v??"").replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+function populateForm(){document.getElementById("product").innerHTML=PRODUCTS.map(x=>`<option>${escapeHtml(x)}</option>`).join("");document.getElementById("factory").innerHTML=FACTORIES.map(x=>`<option>${escapeHtml(x)}</option>`).join("")}
+function populateFilters(keep=true){
+  const years=[...new Set(orders.map(o=>(o.date||"").slice(0,4)).filter(Boolean))].sort((a,b)=>b.localeCompare(a));
+  const months=current12().map(k=>({value:k,label:`${monthLabel(k)} ${k.slice(0,4)}`}));
+  const dist=[...new Set(orders.map(o=>o.distributor).filter(Boolean))].sort();
+  const countries=[...new Set(orders.map(o=>o.country).filter(Boolean))].sort();
+  const valves=[...new Set([...VALVES,...orders.map(o=>o.valve).filter(Boolean)])].sort();
+  setOptions("filterYear",years,"Todos los años",keep);setOptions("filterMonth",months,"Todos los meses",keep);
+  setOptions("filterProduct",PRODUCTS,"Todos los productos",keep);setOptions("filterFactory",FACTORIES,"Todas las fábricas",keep);
+  setOptions("filterDistributor",dist,"Todos los distribuidores",keep);setOptions("filterCountry",countries,"Todos los países",keep);setOptions("filterValve",valves,"Todas las válvulas",keep);
+}
+function matches(o){const txt=selected("filterText").toLowerCase();return (!selected("filterYear")||(o.date||"").startsWith(selected("filterYear")))&&
+  (!selected("filterMonth")||monthKey(o.date)===selected("filterMonth"))&&
+  (!selected("filterProduct")||o.product===selected("filterProduct"))&&
+  (!selected("filterFactory")||o.factory===selected("filterFactory"))&&
+  (!selected("filterDistributor")||o.distributor===selected("filterDistributor"))&&
+  (!selected("filterCountry")||o.country===selected("filterCountry"))&&
+  (!selected("filterValve")||o.valve===selected("filterValve"))&&
+  (!selected("filterReg")||o.reg===selected("filterReg"))&&
+  (!selected("filterStatus")||o.status===selected("filterStatus"))&&
+  (!txt||[o.orderNo,o.sap,o.code,o.country,o.distributor,o.comments,o.product,o.factory].join(" ").toLowerCase().includes(txt));}
+
+function render(){
+  const selectedFactory=selected("filterFactory");
+  document.body.classList.remove("factory-derex","factory-entema","factory-neftis");
+  if(selectedFactory)document.body.classList.add("factory-"+selectedFactory.toLowerCase());
+
+  updateWindowLabel();
+
+  const months=current12();
+  const visible=orders
+    .filter(o=>/^\d{4}-\d{2}-\d{2}$/.test(String(o.date||"")))
+    .filter(o=>months.includes(monthKey(o.date)))
+    .filter(matches)
+    .sort((a,b)=>a.date.localeCompare(b.date)||String(a.id).localeCompare(String(b.id)));
+
+  let html="",total=0,lastMonth="",lastYear="";
+
+  visible.forEach(o=>{
+    const mk=monthKey(o.date);
+    const year=mk.slice(0,4);
+
+    if(year!==lastYear){
+      html+=`<tr class="year-header"><td colspan="14">${escapeHtml(year)}</td></tr>`;
+      lastYear=year;
+      lastMonth="";
+    }
+
+    if(mk!==lastMonth){
+      html+=`<tr class="month-separator" aria-hidden="true"><td colspan="14"></td></tr>`;
+      lastMonth=mk;
+    }
+
+    total+=Number(o.units||0);
+
+    html+=`<tr>
+      <td class="month-cell">${monthLabel(mk)}</td>
+      <td class="qty"><b>${fmt(o.units)}</b></td>
+      <td>${escapeHtml(o.orderNo)}</td>
+      <td>${escapeHtml(o.sap)}</td>
+      <td>${escapeHtml(o.code)}</td>
+      <td class="left">${escapeHtml(o.product)}</td>
+      <td>${escapeHtml(o.country)}</td>
+      <td>${escapeHtml(o.distributor)}</td>
+      <td>${escapeHtml(o.valve)}</td>
+      <td>${escapeHtml(o.week)}</td>
+      <td><span class="badge ${o.reg==="MDR"?"mdr":"mdd"}">${escapeHtml(o.reg)}</span></td>
+      <td><span class="badge ${o.status==="Firme"?"firm":"forecast"}">${o.status==="Firme"?"FIRME":"PREDICCIÓN"}</span></td>
+      <td class="left">${escapeHtml(o.comments)}</td>
+      <td class="actions">
+        <button class="secondary" onclick="editOrder('${o.id}')" ${isEditMode()?'':'disabled'}>Editar</button>
+        <button class="danger" onclick="deleteOrder('${o.id}')" ${isEditMode()?'':'disabled'}>Borrar</button>
+      </td>
+    </tr>`;
+  });
+
+  if(!visible.length){
+    html=`<tr><td colspan="14" class="empty">No hay pedidos que coincidan con los filtros dentro de la ventana seleccionada.</td></tr>`;
+  }
+
+  document.getElementById("tbody").innerHTML=html;
+
+  const byFactory={Derex:0,Entema:0,Neftis:0};
+  visible.forEach(o=>byFactory[o.factory]=(byFactory[o.factory]||0)+Number(o.units||0));
+
+  document.getElementById("summary").innerHTML=
+    `<div class="card"><strong>${visible.length}</strong><span>Pedidos visibles</span></div>`+
+    `<div class="card"><strong>${fmt(total)}</strong><span>Unidades planificadas</span></div>`+
+    `<div class="card"><strong>${fmt(byFactory.Derex)}</strong><span>Unidades Derex</span></div>`+
+    `<div class="card"><strong>${fmt(byFactory.Entema)}</strong><span>Unidades Entema</span></div>`+
+    `<div class="card"><strong>${fmt(byFactory.Neftis)}</strong><span>Unidades Neftis</span></div>`;
+}
+function clearFilters(){["filterYear","filterMonth","filterProduct","filterFactory","filterDistributor","filterCountry","filterValve","filterReg","filterStatus","filterText"].forEach(id=>document.getElementById(id).value="");render()}
+
+
+function updateAccessUI(){
+  const badge=document.getElementById("modeBadge");
+  badge.textContent=editMode?"Modo edición":"Solo lectura";
+  badge.className="mode-badge"+(editMode?" edit":"");
+  document.getElementById("loginBtn").style.display=editMode?"none":"inline-block";
+  document.getElementById("logoutBtn").style.display=editMode?"inline-block":"none";
+  document.getElementById("newOrderBtn").disabled=!editMode;
+  const imp=document.getElementById("importLocalBtn"); if(imp) imp.style.display=(editMode&&isCloudMode())?"inline-block":"none";
+  updateCloudStatus();
+  render();
+}
+function openConfig(){
+  const c=cloudValues();
+  document.getElementById("cfgUrl").value=c.url;
+  document.getElementById("cfgKey").value=c.key;
+  document.getElementById("cfgAdminEmail").value=c.adminEmail;
+  document.getElementById("configError").classList.remove("show");
+  document.getElementById("configModal").classList.add("open");
+}
+function closeConfig(){document.getElementById("configModal").classList.remove("open")}
+async function saveConfig(e){
+  e.preventDefault();
+  const url=document.getElementById("cfgUrl").value.trim().replace(/\/$/,"");
+  const key=document.getElementById("cfgKey").value.trim();
+  const adminEmail=document.getElementById("cfgAdminEmail").value.trim();
+  const err=document.getElementById("configError");
+  err.classList.remove("show");
+  if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)){err.textContent="La Project URL no parece válida. Debe ser https://xxxxx.supabase.co";err.classList.add("show");return}
+  if(key.length<20){err.textContent="La Publishable/anon key no parece válida.";err.classList.add("show");return}
+  if(!adminEmail){err.textContent="Introduce el email del usuario administrador.";err.classList.add("show");return}
+
+  const btn=e.submitter;
+  if(btn){btn.disabled=true;btn.textContent="Conectando…";}
+  localStorage.setItem("mitelosSupabaseConfig",JSON.stringify({url,key,adminEmail}));
+  if(realtimeChannel&&supabaseClient){try{await supabaseClient.removeChannel(realtimeChannel)}catch(_){} realtimeChannel=null}
+  supabaseClient=null; cloudReady=false; cloudError="";
+  let ok=false;
+  try{ ok=await Promise.race([
+    initCloud(),
+    new Promise((_,reject)=>setTimeout(()=>reject(new Error("Tiempo de espera agotado. Supabase no respondió.")),12000))
+  ]); }catch(ex){
+    cloudReady=false;
+    cloudError=ex.message||String(ex);
+    ok=false;
+  }
+  if(btn){btn.disabled=false;btn.textContent="Guardar conexión";}
+  if(!ok){
+    err.textContent="No se pudo conectar: "+(cloudError||"error desconocido");
+    err.classList.add("show");
+    document.getElementById("setupNotice").style.display="block";
+    return;
+  }
+  document.getElementById("setupNotice").style.display="none";
+  closeConfig();
+  await getSession();
+  updateAccessUI();
+}
+function openLogin(){
+  document.getElementById("loginUser").value="";
+  document.getElementById("loginPass").value="";
+  document.getElementById("loginError").classList.remove("show");
+  document.getElementById("loginModal").classList.add("open");
+  setTimeout(()=>document.getElementById("loginUser").focus(),50);
+}
+function closeLogin(){document.getElementById("loginModal").classList.remove("open")}
+
+async function login(e){
+  e.preventDefault();
+  const u=document.getElementById("loginUser").value.trim();
+  const p=document.getElementById("loginPass").value;
+  if(!cloudConfigured()){
+    document.getElementById("loginError").textContent="La base central no está configurada todavía.";
+    document.getElementById("loginError").classList.add("show");
+    return;
+  }
+  if(u!==ADMIN_USERNAME){
+    document.getElementById("loginError").textContent="Usuario o contraseña incorrectos.";
+    document.getElementById("loginError").classList.add("show");
+    return;
+  }
+  const cfg=cloudValues();
+  if(!cfg.adminEmail){
+    document.getElementById("loginError").textContent="Configura primero el email del administrador.";
+    document.getElementById("loginError").classList.add("show");
+    return;
+  }
+  const {data,error}=await supabaseClient.auth.signInWithPassword({email:cfg.adminEmail,password:p});
+  if(error){
+    document.getElementById("loginError").textContent="Usuario o contraseña incorrectos.";
+    document.getElementById("loginError").classList.add("show");
+    return;
+  }
+  currentUser=data.user;
+  editMode=true;
+  closeLogin();
+  updateAccessUI();
+}
+async function logout(){
+  if(supabaseClient)await supabaseClient.auth.signOut();
+  currentUser=null;editMode=false;closeModal();updateAccessUI();
+}
+
+function openModal(id=null){if(!editMode){openLogin();return}document.getElementById("modal").classList.add("open");document.getElementById("modalTitle").textContent=id?"Editar pedido":"Nuevo pedido";document.getElementById("orderForm").reset();document.getElementById("editId").value=id||"";
+  if(id){const o=orders.find(x=>String(x.id)===String(id));if(!o)return;const vals={product:o.product,factory:o.factory,deliveryDate:o.date,units:o.units,orderNo:o.orderNo,sap:o.sap,mitelosCode:o.code,country:o.country,distributor:o.distributor,valve:o.valve,week:o.week,regulatory:o.reg,status:o.status||(((o.orderNo||"").trim())?"Firme":"Predicción"),comments:o.comments};for(const [field,val] of Object.entries(vals))document.getElementById(field).value=val??""}
+  else{const now=new Date();document.getElementById("deliveryDate").value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-15`;document.getElementById("status").value="Predicción";}}
+function closeModal(){document.getElementById("modal").classList.remove("open")}
+
+async function saveOrder(e){
+  e.preventDefault();
+  if(!editMode)return;
+
+  const id=document.getElementById("editId").value;
+  const edited={
+    id:id||null,
+    product:document.getElementById("product").value,
+    factory:document.getElementById("factory").value,
+    date:document.getElementById("deliveryDate").value,
+    units:Number(document.getElementById("units").value),
+    orderNo:document.getElementById("orderNo").value,
+    sap:document.getElementById("sap").value,
+    code:document.getElementById("mitelosCode").value,
+    country:document.getElementById("country").value,
+    distributor:document.getElementById("distributor").value,
+    valve:document.getElementById("valve").value,
+    week:document.getElementById("week").value,
+    reg:document.getElementById("regulatory").value,
+    status:document.getElementById("status").value,
+    comments:document.getElementById("comments").value
+  };
+
+  const filterState={};
+  ["filterYear","filterMonth","filterProduct","filterFactory","filterDistributor","filterCountry","filterValve","filterReg","filterStatus","filterText"]
+    .forEach(k=>filterState[k]=document.getElementById(k).value);
+
+  if(isCloudMode()){
+    const ok=await saveOrderCloud(edited,id||null);
+    if(!ok)return;
+  }else{
+    if(id)orders=orders.map(x=>Number(x.id)===Number(id)?edited:x);
+    else{edited.id=nextId++;orders.push(edited)}
+    saveData();
+    populateFilters(true);
+  }
+
+  populateFilters(true);
+  Object.entries(filterState).forEach(([k,v])=>{
+    const el=document.getElementById(k);
+    if(!el)return;
+    if(k==="filterText")el.value=v;
+    else if([...el.options].some(o=>o.value===v))el.value=v;
+  });
+
+  closeModal();
+  render();
+}
+
+function editOrder(id){openModal(id)}
+
+async function deleteOrder(id){
+  if(!editMode){openLogin();return}
+  const o=orders.find(x=>String(x.id)===String(id));
+  if(!confirm(`¿Borrar el pedido ${o?.orderNo||""}?`))return;
+
+  if(isCloudMode()){
+    await deleteOrderCloud(id);
+  }else{
+    orders=orders.filter(x=>Number(x.id)!==Number(id));
+    saveData();populateFilters(true);render();
+  }
+}
+
+function factoryRows(){const factory=selected("filterFactory");if(!factory){alert("Selecciona primero una fábrica en el filtro.");return null}const months=current12();const rows=orders.filter(o=>o.factory===factory&&months.includes(monthKey(o.date))&&matches(o)).sort((a,b)=>a.date.localeCompare(b.date)||String(a.id).localeCompare(String(b.id)));if(!rows.length){alert("No hay pedidos visibles para esta fábrica.");return null}return {factory,rows}}
+function exportFactory(){const data=factoryRows();if(!data)return;const {factory,rows}=data;const headers=["Mes","Unidades","Nº Pedido","SAP","Código Mitelos","Producto","País","Distribuidor","Proveedor válvula","Semana de entrega","MDD/MDR","Comentarios"];const esc=v=>`"${String(v??"").replace(/"/g,'""')}"`;const lines=[headers.map(esc).join(";")];rows.forEach(o=>lines.push([monthLabel(monthKey(o.date)),o.units,o.orderNo,o.sap,o.code,o.product,o.country,o.distributor,o.valve,o.week,o.reg,o.comments].map(esc).join(";")));const blob=new Blob(["\ufeff"+lines.join("\n")],{type:"text/csv;charset=utf-8;"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`Planificacion_${factory}_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href)}
+function printFactory(){
+  const data=factoryRows();
+  if(!data)return;
+
+  const {factory,rows}=data;
+  const w=window.open("","_blank");
+  if(!w){
+    alert("El navegador ha bloqueado la ventana de impresión. Permite ventanas emergentes para esta página.");
+    return;
+  }
+
+  const colors={
+    Derex:{head:"#f6d58a",sep:"#b88916",year:"#f6d58a"},
+    Entema:{head:"#b9d7f5",sep:"#4f88bb",year:"#b9d7f5"},
+    Neftis:{head:"#d8c2eb",sep:"#8760a8",year:"#d8c2eb"}
+  };
+  const c=colors[factory]||colors.Derex;
+
+  let last="",lastYear="",body="";
+  rows.forEach(o=>{
+    const mk=monthKey(o.date),year=mk.slice(0,4);
+
+    if(year!==lastYear){
+      body+=`<tr class="year-header"><td colspan="12">${escapeHtml(year)}</td></tr>`;
+      lastYear=year;
+      last="";
+    }
+
+    if(mk!==last){
+      body+=`<tr class="month-separator"><td colspan="12"></td></tr>`;
+      last=mk;
+    }
+
+    body+=`<tr>
+      <td>${escapeHtml(monthLabel(mk))}</td>
+      <td>${fmt(o.units)}</td>
+      <td>${escapeHtml(o.orderNo)}</td>
+      <td>${escapeHtml(o.sap)}</td>
+      <td>${escapeHtml(o.code)}</td>
+      <td class="left">${escapeHtml(o.product)}</td>
+      <td>${escapeHtml(o.country)}</td>
+      <td>${escapeHtml(o.distributor)}</td>
+      <td>${escapeHtml(o.valve)}</td>
+      <td>${escapeHtml(o.week)}</td>
+      <td>${escapeHtml(o.reg)}</td>
+      <td class="left">${escapeHtml(o.comments)}</td>
+    </tr>`;
+  });
+
+  const months=current12();
+
+  w.document.write(`<html><head><title>Planificación ${escapeHtml(factory)}</title>
+  <style>
+    @page{size:landscape;margin:8mm}
+    body{font-family:Arial;font-size:10px;color:#222}
+    h2{margin:0 0 4px}
+    p{margin:0 0 8px;color:#555}
+    table{border-collapse:collapse;width:100%}
+    th,td{border:1px solid #222;padding:5px;text-align:center;vertical-align:middle}
+    th{background:${c.head}}
+    .left{text-align:left}
+    .month-separator td{height:7px;padding:0;border-left:0;border-right:0;border-bottom:0;border-top:3px solid ${c.sep};background:#f5f5f5}
+    .year-header td{padding:6px 8px;border:1px solid ${c.sep};background:${c.year};font-size:12px;font-weight:700;text-align:left}
+  </style></head><body>
+    <h2>Planificación de pedidos - ${escapeHtml(factory)}</h2>
+    <p>Ventana: ${escapeHtml(monthLabel(months[0]))} ${months[0].slice(0,4)} → ${escapeHtml(monthLabel(months[11]))} ${months[11].slice(0,4)} · Generado: ${new Date().toLocaleDateString("es-ES")}</p>
+    <table>
+      <thead><tr>
+        <th>Mes</th><th>Unidades</th><th>Nº Pedido</th><th>SAP</th><th>Código Mitelos</th><th>Producto</th><th>País</th><th>Distribuidor</th><th>Válvula</th><th>Semana</th><th>MDD/MDR</th><th>Comentarios</th>
+      </tr></thead>
+      <tbody>${body}</tbody>
+    </table>
+    <script>window.onload=()=>window.print();<\/script>
+  </body></html>`);
+  w.document.close();
+}
+
+
+(async function boot(){
+  populateForm();
+  populateFilters(false);
+  closeModal();
+  closeLogin();
+  updateCloudStatus();
+
+  if(cloudConfigured()){
+    await getSession();
+    editMode=!!currentUser;
+    await initCloud();
+    updateAccessUI();
+  }else{
+    document.getElementById("setupNotice").style.display="block";
+    updateAccessUI();
+  }
+})();
+
+</script>
+</body>
+</html>
